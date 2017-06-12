@@ -1,0 +1,24 @@
+{
+  "name": "electionmap",
+  "version": "1.0.0",
+  "description": "JS librarie to display informations about an election",
+  "main": "map_draw_desk.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "@mapbox/polylabel": "^1.0.2",
+    "require": "^2.4.20",
+    "tinyqueue": "^1.2.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Marc-AntoineGL/electionmap.js.git"
+  },
+  "author": "Marco Galinier",
+  "license": "ISC"
+}
