@@ -17,7 +17,13 @@
 #general td{
     font-size: 120%;
 }
-
+#title {
+  display: inline-block;
+  padding-right: 10%;
+}
+#btnReduire{
+  display: inline-block;
+}
 
 .bureau{
   background-color: white;

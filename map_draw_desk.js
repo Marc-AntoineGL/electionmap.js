@@ -1,58 +1,30 @@
-//
-//
-// loadJSON('http://localhost:8000/bv_fontenilles_2017_4326.geojson',function(data) {
-//   mapboxgl.accessToken = 'pk.eyJ1IjoibWFyY3N0YWdpYWlyZSIsImEiOiJjajFkamp1Y3kwMDB6MnFuMmVwcTNsMXU1In0.L1qp6GMQgpRI1PszznjFKQ';
-//   var map = new mapboxgl.Map({
-//       container: 'map',
-//       style: 'mapbox://styles/mapbox/streets-v9',
-//       center : [1.223549303040727, 43.55362036156569],
-//       zoom : 12.5,
-//       minZoom : 12.5
-//   });
-//   initMap(data,map)
-//   setTimeout(function(){  loadJSON('http://localhost:8000/suffragiaV9.json',function(json) {
-//         setData(json,map)
-//         },function(xhr) {
-//           console.error(xhr);
-//         }
-//       )
-//   }, 3000);
-//   setInterval(function() {loadJSON('http://localhost:8000/suffragiaV8.json',function(blabla) {
-//       setData(blabla,map)
-//       },function(xhr) {
-//         console.error(xhr);
-//       }
-//     )}
-//     ,5000
-//   )
-//   },function(xhr) {
-//     console.error(xhr);
-//   }
-// );
 
+const nbTop = 2;
+var map,geojson,json,listCandidates,listDesks,generalInfos,tabMarkers = [];
+var booleans = {
+  boolDisplayGeneralPanel : true,
+  panelMoveable : false
+}
+//firsts functions
 function createWholeMap(geojsonFile,jsonFileV1,jsonFileV2){
 
   loadJSON(geojsonFile,function(data) {
-    console.log(data)
+    console.log("geojson",data)
+    geojson = data;
 
       mapboxgl.accessToken = 'pk.eyJ1IjoibWFyY3N0YWdpYWlyZSIsImEiOiJjajFkamp1Y3kwMDB6MnFuMmVwcTNsMXU1In0.L1qp6GMQgpRI1PszznjFKQ';
-      var map = new mapboxgl.Map({
+      map = new mapboxgl.Map({
           container: 'map',
           style: 'mapbox://styles/mapbox/streets-v9',
           center : [1.223549303040727, 43.55362036156569],
           zoom : 12.5,
           minZoom : 12.5
       });
-      calculCenterPolygon(data.features[0].geometry.coordinates,map)
-      calculCenterPolygon(data.features[1].geometry.coordinates,map)
-      calculCenterPolygon(data.features[2].geometry.coordinates,map)
-      calculCenterPolygon(data.features[3].geometry.coordinates,map)
-      calculCenterPolygon(data.features[4].geometry.coordinates,map)
-      initMap(data,map)
-
+      initMap(geojson,map)
       setTimeout(function(){
-        loadJSON(jsonFileV1,function(json)
+        loadJSON(jsonFileV1,function(data)
           {
+            json = data
             setData(json,map)
           },function(xhr) {
             console.error(xhr);
@@ -61,9 +33,10 @@ function createWholeMap(geojsonFile,jsonFileV1,jsonFileV2){
       }
       , 3000);
       setInterval(function () {
-        loadJSON(jsonFileV2,function(a)
+        loadJSON(jsonFileV2,function(data)
           {
-            setData(a,map)
+            json=data;
+            setData(json,map)
             console.log('ok')
           },function(xhr) {
             console.error(xhr);
@@ -77,14 +50,6 @@ function createWholeMap(geojsonFile,jsonFileV1,jsonFileV2){
     }
   );
 }
-function calculCenterPolygon(polygon,map){
-  var p = polylabel(polygon,1.0);
-  //console.log(p)
-  // var popup = new mapboxgl.Popup({closeOnClick: true});
-  // popup.setLngLat(p)
-  // .setText('coucou')
-  // .addTo(map);
-}
 function initMap(data,map){
     map.on("load",function(){
 
@@ -92,6 +57,7 @@ function initMap(data,map){
             "type" : "geojson",
             "data" : data
         });
+        //limites
         map.addLayer({
             id : "lineBureaux",
             type : "line",
@@ -100,18 +66,6 @@ function initMap(data,map){
                 {
                     'line-color': 'black',
                     'line-opacity': 1
-                }
-        });
-        //fill empty
-        map.addLayer({
-            id : "fillBVEmpty",
-            type : "fill",
-            source : "dataBV",
-            filter : ["==","$type","Polygon"],
-            paint :
-                {
-                    'fill-color': 'white',
-                    'fill-opacity': 0.0
                 }
         });
         //couche des bureaux remplis
@@ -129,16 +83,38 @@ function initMap(data,map){
                     'fill-opacity': 0.3
                 }
         });
+
+        map.on("mousedown", function(e) {
+            //console.log([e.lngLat.lng,e.lngLat.lat])
+            //console.log(e.lngLat)
+            if(booleans.panelMoveable){
+              map.on("mousemove",function(e){
+                if(!booleans.panelMoveable){
+                  return;
+                }
+                tabMarkers[booleans.panelMoveable].setLngLat(e.lngLat);
+              })
+              map.on("mouseup",function(e){
+
+                map.off('mousemove',function(e){
+                  tabMarkers[booleans.panelMoveable].setLngLat(e.lngLat);
+                });
+                booleans.panelMoveable = false;
+                map.dragPan.enable();
+              })
+            }
+        });
+
     });//end onLoad
 }
 function setData(json,map){
-    map.on("click", function(e) {
-        //console.log([e.lngLat.lng,e.lngLat.lat])
-        console.log(e)
-    });
-    var listCandidates = json[0],listDesks = json[1], generalInfos = json[2];
+    //associate general vars
+    listCandidates = json[0],listDesks = json[1], generalInfos = json[2];
+    //set center of bureaux
+    setCenterAllDesks(listDesks)
     //console.log("listDesks",listDesks)
     editGeneralPanel(generalInfos)
+    //console.log("generalInfos",generalInfos)
     //edit json to add total voices by bureau
     setTotalVoices(listDesks)
     //console.log('json',json)
@@ -152,8 +128,11 @@ function setData(json,map){
     //console.log('listDesks',listDesks)
 
     //creates bureau panel
+    //first time ? see if there is one bureau panel to know
     if(!document.getElementById('1')){
         initDivs(listCandidates,listDesks);
+        //for Divs on the Map
+        showDivs(json,map)
     }else{
         updateDivs(listCandidates,listDesks)
     }
@@ -165,21 +144,9 @@ function setData(json,map){
         }
     );
 
-    var lastBureauID,popup;
 
-    //for Divs on the Map
-    showDivs(json,map)
 }
 
-function getFeatureColor(tab,i){
-    var color;
-    tab.forEach(function(e){
-        if(e.idBureau == i){
-        color = e.colorLayer;
-        }
-    })
-    return color;
-}
 //relative to DOM
 function replaceWithIcon(state){
     if(state == "EN COURS"){
@@ -196,34 +163,28 @@ function replaceWithIcon(state){
     }
 
 }
-function getStops(json){
-  var tab = [];
-  for (var bureau in json){
-    tab.push([bureau,json[bureau].detailsFirst.colorLayer])
-  }
-  console.log(tab)
-  return tab;
-}
 function initDivs(listCandidates,listDesks){
     var j = 0;
     for (var bureau in listDesks){
+      //panel bureaux
         var el = document.createElement('div');
         el.id = listDesks[bureau].detailDesk[1];
         el.className = "bureau";
-        //el.onclick = clicked;
         el.style.border = '5px solid '+listDesks[bureau].detailsFirst.colorLayer;
+        el.onmousedown = clicked;
         el.innerHTML = '<h1 id='+'"'+"idBureau"+listDesks[bureau].detailDesk[1]+'">'+listDesks[bureau].detailDesk[0]+" "+replaceWithIcon(listDesks[bureau].detailDesk[2])+'</h1>'
         document.body.appendChild(el)
         var ul = document.createElement('ul');
         ul.className = "listCandidats"
         el.appendChild(ul);
-        for (var i = 0; i < deskNumber; i++) {
+        for (var i = 0; i < nbTop; i++) {
             var li = document.createElement('li');
             li.className = "candidat"
             li.id = bureau.toString()+i;
             li.innerText = listCandidates[listDesks[bureau].top5[i].idC][0]+' ('+listCandidates[listDesks[bureau].top5[i].idC][1]+') '+listDesks[bureau].top5[i].scorePerc+'%';
             ul.appendChild(li);
         }
+        //number on the zone
         var text = document.createElement('div');
         text.className = "bureauText";//nuero sur la carte
         text.id = "text"+listDesks[bureau].detailDesk[1];
@@ -231,6 +192,13 @@ function initDivs(listCandidates,listDesks){
         document.body.appendChild(text);
         j++;
     }
+}
+function clicked(){
+  //console.log(listDesks[this.id])
+  booleans.panelMoveable = this.id;
+  console.log(this.backgroundColor)// = 'red';
+  map.dragPan.disable();
+
 }
 function updateDivs(listCandidates,listDesks){
     var j = 0;
@@ -240,68 +208,33 @@ function updateDivs(listCandidates,listDesks){
         var el = document.getElementById(listDesks[bureau].detailDesk[1]);
         el.style.border = '5px solid '+listDesks[bureau].detailsFirst.colorLayer;
 
-        for (var i = 0; i < 5; i++) {
+        for (var i = 0; i < nbTop; i++) {
             var li = document.getElementById(bureau.toString()+i);
             li.innerText = listCandidates[listDesks[bureau].top5[i].idC][0]+' ('+listCandidates[listDesks[bureau].top5[i].idC][1]+') '+listDesks[bureau].top5[i].scorePerc+'%';
         }
         j++;
-    }}
-    function showDivs(json,map){
-        // for (var bureau in data[1]){
-        var el = document.getElementById('1');
-        new mapboxgl.Marker(el)//,{offset: [-25, -25]}
-            .setLngLat([1.1296722167269877, 43.543666405007656])
-            .addTo(map)
-
-        var el = document.getElementById('2');
-        new mapboxgl.Marker(el)//,{offset: [-25, -25]}
-            .setLngLat([1.2206927895318245, 43.543847658081916])
-            .addTo(map)
-
-        var el = document.getElementById('3');
-        new mapboxgl.Marker(el)//,{offset: [-25, -25]}
-            .setLngLat([1.1267965667528301, 43.58860047808773])
-            .addTo(map)
-
-        var el = document.getElementById('4');
-        new mapboxgl.Marker(el)//,{offset: [-25, -25]}
-            .setLngLat([1.1961167622924904, 43.58818258745134])
-            .addTo(map)
-
-        var el = document.getElementById('5');
-        new mapboxgl.Marker(el)//,{offset: [-25, -25]}
-            .setLngLat([1.2466120585726799, 43.58739130800956])
-            .addTo(map)
-
-        //TEXT OF bureau
-        var text = document.getElementById('text1');
-        new mapboxgl.Marker(text,{offset: [-25, -25]})//,{offset: [-25, -25]}
-            .setLngLat([1.1766954945074417, 43.547022263252956])
-            .addTo(map)
-        var text = document.getElementById('text2');
-        new mapboxgl.Marker(text,{offset: [-25, -25]})//,{offset: [-25, -25]}
-            .setLngLat([1.2038852694260243, 43.54904575686737])
-            .addTo(map)
-        var text = document.getElementById('text3');
-        new mapboxgl.Marker(text,{offset: [-25, -25]})//,{offset: [-25, -25]}
-            .setLngLat([1.1820363431605472, 43.56373604274361])
-            .addTo(map)
-        var text = document.getElementById('text4');
-        new mapboxgl.Marker(text,{offset: [-25, -25]})//,{offset: [-25, -25]}
-            .setLngLat([1.2000010158690202, 43.56065753694847])
-            .addTo(map)
-        var text = document.getElementById('text5');
-        new mapboxgl.Marker(text,{offset: [-25, -25]})//
-            .setLngLat([1.2219713250526638, 43.56136120929477])
-            .addTo(map)
-
-        // }
-
     }
+}
+function showDivs(json,map){
+    for (bureau in json[1]){
+      //desks panel
+      var el = document.getElementById(json[1][bureau].detailDesk[1]);
+      tabMarkers[bureau] = new mapboxgl.Marker(el,{offset: [-100, -75]})//,{offset: [-25, -25]}
+          .setLngLat(json[1][bureau].center)
+          .addTo(map)
+
+      //TEXT OF bureau
+      var text = document.getElementById('text'+json[1][bureau].detailDesk[1]);
+      new mapboxgl.Marker(text,{offset: [-25, -25]})//,{offset: [-25, -25]}
+          .setLngLat(json[1][bureau].center)
+          .addTo(map)
+    }
+}
+
+//relative to General Panel
 function editGeneralPanel(generalInfos){
-    //console.log(json)
     var el = document.getElementById('general')
-    table = "<table class='table'><tr><td>Nombre de votes : </td><td>"+generalInfos.totalVote+"</td></tr>"+
+    table = '<table class="table "'+isGeneralPanelHidden(generalInfos)+'><tr><td>Nombre de votes : </td><td>'+generalInfos.totalVote+"</td></tr>"+
     '<tr><td>Avancement : </td><td>'+ generalInfos.advancement + '</td></tr>'+
     '<tr><td>Votes Blanc : </td><td>'+ generalInfos.totalBlanc + '</td></tr>'+
     '<tr><td>Votes Nuls : </td><td>'+ generalInfos.totalNul + '</td></tr>'+
@@ -311,10 +244,38 @@ function editGeneralPanel(generalInfos){
     '<tr><td>Etat de l\'élection : </td><td>'+ generalInfos.stateElection + '</td></tr></table>';
 
     el.innerHTML =
-        '<h1>'+ generalInfos.townHall + '</h1>'+
-        '<h2>'+ generalInfos.election + '</h2>'+
-        '<h3>'+ generalInfos.date + '</h3>'+table;
+
+        '<div> <h1 class = "'+isGeneralPanelHidden(generalInfos)+'">'+ generalInfos.townHall + '</h1>' +'<button id="btnReduire" onclick="testclic()">'+panelEditButtonText(generalInfos)+'</button></div>'+
+        '<h2 class = "'+isGeneralPanelHidden(generalInfos)+'">'+ generalInfos.election + '</h2>'+
+        '<h3 class = "'+isGeneralPanelHidden(generalInfos)+'">'+ generalInfos.date + '</h3>'+table;
 }
+function testclic(){
+  if(booleans.boolDisplayGeneralPanel){
+    booleans.boolDisplayGeneralPanel = false;
+    editGeneralPanel(generalInfos)
+  }
+  else {
+    booleans.boolDisplayGeneralPanel = true;
+    editGeneralPanel(generalInfos)
+  }
+}
+function panelEditButtonText(generalInfos){
+  if(booleans.boolDisplayGeneralPanel){
+    return "Réduire";
+  }
+  else {
+    return "Voir Général"
+  }
+}
+function isGeneralPanelHidden(generalInfos){
+  if(booleans.boolDisplayGeneralPanel){
+    return "";
+  }
+  else {
+    return "hidden"
+  }
+}
+
 //calculs with json data
 function setTotalVoices(json){
     for (var bureau in json){
@@ -332,7 +293,7 @@ function getTop5(json){
             json[bureau].top5.push({ idC : candidat, score : json[bureau].detailCandidates[candidat]})
         }
         json[bureau].top5.sort(compareScoreCandidats)
-        json[bureau].top5 = json[bureau].top5.slice(0,5);
+        json[bureau].top5 = json[bureau].top5.slice(0,nbTop);
     }
 }
 function calculateCenterMultiplePointsV3(Tab){
@@ -399,11 +360,32 @@ function calculateFirst(bureau,idBureau,listCandidates){
     return first;
 }
 
-//else
-function clicked(e){
-  if(document.getElementById(e.target.id).className.includes("bureau")){
-    var el = document.getElementById(e.target.id);
-    el.style.backgroundColor = 'red';
+//set color on map
+function getStops(json){
+  var tab = [];
+  for (var bureau in json){
+    tab.push([bureau,json[bureau].detailsFirst.colorLayer])
+  }
+  return tab;
+}
+
+//relative to centers of desks
+function calculCenterPolygon(polygon,listDesks){
+  var p = polylabel(polygon,1.0);
+  return p;
+  //console.log(p)
+  // var popup = new mapboxgl.Popup({closeOnClick: true});
+  // popup.setLngLat(p)
+  // .setText('coucou')
+  // .addTo(map);
+}
+function setCenterAllDesks(listDesks){
+  for (bureau in listDesks){
+    geojson.features.forEach(function(feat){
+      if (feat.properties.bv217 == listDesks[bureau].detailDesk[1]){
+        listDesks[bureau].center = calculCenterPolygon(feat.geometry.coordinates);
+      }
+    })
   }
 }
 
