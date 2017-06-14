@@ -1,5 +1,5 @@
 
-const nbTop = 2;
+var nbTop;
 var map,geojson,json,listCandidates,listDesks,generalInfos,tabMarkers = [];
 var booleans = {
   boolDisplayGeneralPanel : true,
@@ -117,7 +117,7 @@ function setData(json,map){
     //console.log("generalInfos",generalInfos)
     //edit json to add total voices by bureau
     setTotalVoices(listDesks)
-    //console.log('json',json)
+    console.log('json',json)
     //calculate the first of every bureau
     var layersColor = [];
     setFirsts(listCandidates,listDesks,generalInfos)
@@ -380,12 +380,19 @@ function calculCenterPolygon(polygon,listDesks){
   // .addTo(map);
 }
 function setCenterAllDesks(listDesks){
+  var j = 0;
   for (bureau in listDesks){
+    j++
     geojson.features.forEach(function(feat){
       if (feat.properties.bv217 == listDesks[bureau].detailDesk[1]){
         listDesks[bureau].center = calculCenterPolygon(feat.geometry.coordinates);
       }
     })
+  }
+  if(j > 2){
+    nbTop = 5;
+  }else{
+    nbTop = 2;
   }
 }
 
